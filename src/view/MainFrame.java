@@ -9,6 +9,8 @@ import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
+import java.util.List;
+import java.sql.SQLException;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -28,6 +30,8 @@ import model.LineaFigura;
 import model.PoligonoIrregularFigura;
 import model.PoligonoRegularFigura;
 import model.PuntoFigura;
+import dao.DibujoDAO;
+import dao.FiguraDAO;
 
 public class MainFrame extends JFrame {
     // Componentes Swing
@@ -98,11 +102,11 @@ public class MainFrame extends JFrame {
         // 1.4) Botones de Guardar/Cargar/Exportar (deshabilitados por ahora)
         gbc.gridy++;
         btnGuardar = new JButton("Guardar dibujo");
-        btnGuardar.setEnabled(false);
+        btnGuardar.setEnabled(true);
         panelControles.add(btnGuardar, gbc);
         gbc.gridy++;
         btnCargar = new JButton("Cargar dibujo");
-        btnCargar.setEnabled(false);
+        btnCargar.setEnabled(true);
         panelControles.add(btnCargar, gbc);
         gbc.gridy++;
         btnExportarSVG = new JButton("Exportar a SVG");
@@ -230,18 +234,110 @@ public class MainFrame extends JFrame {
         });
 
         // 3.6) Botones Guardar/Cargar/Exportar no implementados
-        btnGuardar.addActionListener(e ->
-            javax.swing.JOptionPane.showMessageDialog(
+        btnGuardar.addActionListener(e -> {
+            String nombre = javax.swing.JOptionPane.showInputDialog(
                 MainFrame.this,
-                "Funcionalidad de \"Guardar\" aún no implementada."
-            )
-        );
-        btnCargar.addActionListener(e ->
-            javax.swing.JOptionPane.showMessageDialog(
-                MainFrame.this,
-                "Funcionalidad de \"Cargar\" aún no implementada."
-            )
-        );
+                "Introduce un nombre para este dibujo:"
+            );
+            if (nombre == null || nombre.trim().isEmpty()) {
+                return; // El usuario canceló o no escribió nada
+            }
+            try {
+                DibujoDAO dibujoDAO = new DibujoDAO();
+                FiguraDAO figuraDAO = new FiguraDAO();
+                // 1) Intentar crear el dibujo (puede lanzar SQLException si nombre ya existe)
+                int idDibujo;
+                try {
+                    idDibujo = dibujoDAO.crearDibujo(nombre.trim());
+                } catch (SQLException ex) {
+                    // Si el error es por clave única duplicada, ofrecer sobrescribir
+                    if (ex.getMessage().contains("Duplicate") || ex.getErrorCode() == 1062) {
+                        int resp = javax.swing.JOptionPane.showConfirmDialog(
+                            MainFrame.this,
+                            "El nombre ya existe. ¿Deseas sobrescribir el dibujo existente?",
+                            "Confirmar sobrescritura",
+                            javax.swing.JOptionPane.YES_NO_OPTION
+                        );
+                        if (resp == javax.swing.JOptionPane.YES_OPTION) {
+                            idDibujo = dibujoDAO.obtenerIdPorNombre(nombre.trim());
+                            // Eliminar las figuras existentes de ese dibujo
+                            figuraDAO.eliminarFigurasDeDibujo(idDibujo);
+                        } else {
+                            return;
+                        }
+                    } else {
+                        throw ex;
+                    }
+                }
+                // 2) Guardar cada figura en orden
+                List<Figura> figs = lienzoModel.getFiguras();
+                for (int i = 0; i < figs.size(); i++) {
+                    figuraDAO.guardarFigura(idDibujo, figs.get(i), i);
+                }
+                javax.swing.JOptionPane.showMessageDialog(
+                    MainFrame.this,
+                    "Dibujo '" + nombre + "' guardado correctamente."
+                );
+            } catch (SQLException ex) {
+                javax.swing.JOptionPane.showMessageDialog(
+                    MainFrame.this,
+                    "Error al guardar dibujo: " + ex.getMessage()
+                );
+                ex.printStackTrace();
+            }
+        });
+        btnCargar.addActionListener(e -> {
+            try {
+                DibujoDAO dibujoDAO = new DibujoDAO();
+                FiguraDAO figuraDAO = new FiguraDAO();
+                // 1) Obtener lista de nombres de dibujos existentes
+                java.util.List<String> nombres = dibujoDAO.listarNombresDibujos();
+                if (nombres.isEmpty()) {
+                    javax.swing.JOptionPane.showMessageDialog(
+                        MainFrame.this,
+                        "No hay dibujos guardados."
+                    );
+                    return;
+                }
+                // 2) Mostrar diálogo para seleccionar uno
+                String seleccionado = (String) javax.swing.JOptionPane.showInputDialog(
+                    MainFrame.this,
+                    "Selecciona un dibujo:",
+                    "Cargar dibujo",
+                    javax.swing.JOptionPane.PLAIN_MESSAGE,
+                    null,
+                    nombres.toArray(),
+                    nombres.get(0)
+                );
+                if (seleccionado == null) {
+                    return; // El usuario canceló
+                }
+                // 3) Obtener id a partir del nombre
+                int idDibujo = dibujoDAO.obtenerIdPorNombre(seleccionado);
+                if (idDibujo < 0) {
+                    javax.swing.JOptionPane.showMessageDialog(
+                        MainFrame.this,
+                        "Error: no se encontró ese dibujo en la base de datos."
+                    );
+                    return;
+                }
+                // 4) Cargar las figuras de ese dibujo
+                java.util.List<Figura> figs = figuraDAO.cargarFigurasPorDibujo(idDibujo);
+                // 5) Vaciar modelo actual y agregar las figuras leídas
+                lienzoModel.clear();
+                for (Figura f : figs) {
+                    lienzoModel.agregarFigura(f);
+                }
+                canvas.clearFiguraTemporal();
+                canvas.repaint();
+            } catch (SQLException ex) {
+                javax.swing.JOptionPane.showMessageDialog(
+                    MainFrame.this,
+                    "Error al cargar dibujo: " + ex.getMessage()
+                );
+                ex.printStackTrace();
+            }
+        });
         btnExportarSVG.addActionListener(e ->
             javax.swing.JOptionPane.showMessageDialog(
                 MainFrame.this,
