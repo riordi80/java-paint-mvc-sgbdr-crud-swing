@@ -4,59 +4,81 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Point;
-import java.awt.event.MouseAdapter;
+import java.awt.event.MouseMotionAdapter;
 import java.awt.event.MouseEvent;
-import java.util.ArrayList;
-import java.util.List;
 import javax.swing.JPanel;
+import model.Figura;
+import model.LienzoModel;
 
 /**
- * CanvasPanel es nuestro “lienzo” blanco. Por ahora, guarda una lista
- * de puntos clicados y dibuja un pequeño círculo en cada clic.
+ * CanvasPanel es nuestro “lienzo” (vista). Ya no almacena puntos sueltos:
+ * recibe un LienzoModel y, en paintComponent, invoca a cada figura allí guardada.
+ * 
+ * Además, tendrá espacio para mostrar una figura “temporal” mientras el usuario
+ * arrastra el ratón (por ejemplo, la línea o el círculo en proceso).
  */
 public class CanvasPanel extends JPanel {
-    // Lista de puntos donde el usuario hizo clic
-    private final List<Point> puntos = new ArrayList<>();
+    private LienzoModel modelo;       // referencia al modelo
+    private Figura figuraTemporal;    // figura que se está dibujando “en proceso”
+    private Color colorFondo = Color.WHITE;
 
     public CanvasPanel() {
-        // Preferimos un tamaño razonable de lienzo, p. ej. 800×600
+        // Tamaño preferido del lienzo
         setPreferredSize(new Dimension(800, 600));
-        setBackground(Color.WHITE);
+        setBackground(colorFondo);
 
-        // Añadimos un MouseAdapter que en cada clic guarda la posición
-        addMouseListener(new MouseAdapter() {
+        // MouseMotionAdapter se usará más adelante para dibujar “dinámicamente”
+        addMouseMotionListener(new MouseMotionAdapter() {
             @Override
-            public void mouseClicked(MouseEvent e) {
-                // Guardamos la posición clicada
-                puntos.add(e.getPoint());
-                // Pedimos repintado
-                repaint();
+            public void mouseMoved(MouseEvent e) {
+                // Por ahora, no hacemos nada; en Parte 2 usaremos también mouseMoved
+                // para pintar la figura temporal mientras el usuario mueve el ratón.
             }
         });
+    }
+
+    /** 
+     * Asigna el modelo (debe invocarse desde MainFrame justo después de crearlo).
+     */
+    public void setModel(LienzoModel modelo) {
+        this.modelo = modelo;
+        repaint();
+    }
+
+    /**
+     * Permite que el controlador actualice la figura temporal
+     * que queremos pintar entre el primer y segundo clic, etc.
+     */
+    public void setFiguraTemporal(Figura fTemp) {
+        this.figuraTemporal = fTemp;
+        repaint();
     }
 
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-        Graphics2D g2 = (Graphics2D) g.create();
-
-        // Para cada punto, dibujamos un pequeño círculo de radio fijo (p.ej. 4 px)
-        g2.setColor(Color.RED); // color de prueba para el marcador
-        for (Point p : puntos) {
-            int r = 4;
-            // Dibujamos un círculo centrado en (p.x, p.y)
-            g2.fillOval(p.x - r, p.y - r, r * 2, r * 2);
+        if (modelo != null) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            // Primero, dibujamos todas las figuras definitivas almacenadas en el modelo
+            for (Figura f : modelo.getFiguras()) {
+                f.dibujar(g2);
+            }
+            // Luego, si existe una figura temporal (en proceso), la dibujamos encima
+            if (figuraTemporal != null) {
+                figuraTemporal.dibujar(g2);
+            }
+            g2.dispose();
+        } else {
+            // Si no hay modelo asignado, solo dejamos el fondo blanco
         }
-
-        g2.dispose();
     }
 
     /**
-     * Método para limpiar todos los puntos (por si hiciera falta más tarde).
+     * Reinicia (elimina) la figura temporal. El controlador llamará a esto
+     * cuando la figura ya esté confirmada (segundo clic, fin de vértices, etc.).
      */
-    public void clear() {
-        puntos.clear();
+    public void clearFiguraTemporal() {
+        this.figuraTemporal = null;
         repaint();
     }
 }
