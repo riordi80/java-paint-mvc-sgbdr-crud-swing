@@ -1,0 +1,41 @@
+# ==========================================
+# IDE / NetBeans
+# ==========================================
+# Ignorar la configuración privada de NetBeans
+nbproject/private/
+# Archivos generados por NetBeans
+nbproject/Makefile-*
+nbactions.xml
+nb-configuration.xml
+
+# ==========================================
+# Carpetas de compilación / distribución
+# ==========================================
+build/
+dist/
+nbbuild/
+nbdist/
+*.class
+
+# ==========================================
+# Librerías externas descargadas (si no están en tu repo)
+# ==========================================
+lib/
+# (si tu proyecto usa Maven/Gradle, quizá haya carpetas target/ o build/)
+target/
+.gradle/
+build/
+
+# ==========================================
+# Archivos sensibles o de sistema
+# ==========================================
+.env
+*.log
+.DS_Store
+
+# ==========================================
+# Otros (nota: adapta según tu flujo)
+# ==========================================
+*.iml
+.idea/
+doc/
