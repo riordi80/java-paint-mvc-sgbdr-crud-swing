@@ -30,6 +30,7 @@ import javax.swing.JOptionPane;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.regex.Pattern;
 
 import model.CirculoFigura;
 import model.Figura;
@@ -57,18 +58,22 @@ public class MainFrame extends JFrame {
     private Color colorTrazo = Color.BLACK;
     private Color colorRelleno = Color.WHITE;
 
-    // Modelo en memoria (Parte 2)
+    // Modelo en memoria
     private LienzoModel lienzoModel;
 
+    // Nombre del dibujo actual (para título)
+    private String nombreActual = "(sin nombre)";
+
     // Estado temporal para dibujar cada figura:
-    private int x0, y0; 
+    private int x0, y0;
     private java.util.List<Point> verticesTemp = new ArrayList<>();
     private boolean enModoDibujar = false;
     private Figura figuraTemporal; // para pasarla a canvas
 
     public MainFrame() {
-        super("Mi Paint en Swing (parte 4)");
+        super("Mi Paint");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setTitle("Mi Paint - Dibujo: " + nombreActual);
         setLayout(new BorderLayout());
 
         // 1) Creamos el panel de controles (a la izquierda)
@@ -110,7 +115,7 @@ public class MainFrame extends JFrame {
         // 1.4) Botones de Guardar/Cargar/Exportar
         gbc.gridy++;
         btnGuardar = new JButton("Guardar dibujo");
-        btnGuardar.setEnabled(true);
+        btnGuardar.setEnabled(false); // Deshabilitado si no hay figuras
         panelControles.add(btnGuardar, gbc);
         gbc.gridy++;
         btnCargar = new JButton("Cargar dibujo");
@@ -118,10 +123,10 @@ public class MainFrame extends JFrame {
         panelControles.add(btnCargar, gbc);
         gbc.gridy++;
         btnExportarSVG = new JButton("Exportar a SVG");
-        btnExportarSVG.setEnabled(true);
+        btnExportarSVG.setEnabled(false); // Deshabilitado si no hay figuras
         panelControles.add(btnExportarSVG, gbc);
 
-        // 1.5) Botón para “Finalizar pol. irr.” (inicialmente deshabilitado)
+        // 1.5) Botón para “Finalizar pol. irr.”
         gbc.gridy++;
         btnFinalizarPoligono = new JButton("Finalizar pol. irr.");
         btnFinalizarPoligono.setEnabled(false);
@@ -136,10 +141,10 @@ public class MainFrame extends JFrame {
         canvas.setModel(lienzoModel);
         add(canvas, BorderLayout.CENTER);
 
-        // 3) Asociar listeners a comboFiguras, slider, botones de color, finalizar pol. irr., Guardar, Cargar y Exportar SVG
+        // 3) Asociar listeners
         configurarListeners();
 
-        // 4) Asociar MouseAdapter a canvas para captura de clics y movimiento
+        // 4) MouseAdapter para el canvas
         canvas.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
@@ -154,11 +159,11 @@ public class MainFrame extends JFrame {
         });
 
         pack();
-        setLocationRelativeTo(null); // centrar en pantalla
+        setLocationRelativeTo(null);
     }
 
     private void configurarListeners() {
-        // 3.1) Cuando cambia la selección en comboFiguras
+        // 3.1) ComboFiguras
         comboFiguras.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -176,7 +181,7 @@ public class MainFrame extends JFrame {
             }
         });
 
-        // 3.2) Botón Color Trazo
+        // 3.2) Color Trazo
         btnColorTrazo.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -190,7 +195,7 @@ public class MainFrame extends JFrame {
             }
         });
 
-        // 3.3) Botón Color Relleno
+        // 3.3) Color Relleno
         btnColorRelleno.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -204,16 +209,15 @@ public class MainFrame extends JFrame {
             }
         });
 
-        // 3.4) Slider (opcional): solo imprime el valor
+        // 3.4) SliderVertices (se quita println)
         sliderVertices.addChangeListener(new ChangeListener() {
             @Override
             public void stateChanged(ChangeEvent e) {
-                int nLados = sliderVertices.getValue();
-                System.out.println("Slider vertices = " + nLados);
+                // Ya no imprimimos nada en consola
             }
         });
 
-        // 3.5) Botón “Finalizar pol. irr.”
+        // 3.5) Finalizar Polígono Irregular
         btnFinalizarPoligono.addActionListener(e -> {
             if (verticesTemp.size() < 3) {
                 JOptionPane.showMessageDialog(
@@ -229,7 +233,6 @@ public class MainFrame extends JFrame {
                 );
                 return;
             }
-            // Polígono válido: lo agregamos al modelo
             PoligonoIrregularFigura pIrr = new PoligonoIrregularFigura(
                 new ArrayList<>(verticesTemp),
                 colorTrazo, colorRelleno, true
@@ -239,26 +242,49 @@ public class MainFrame extends JFrame {
             enModoDibujar = false;
             canvas.clearFiguraTemporal();
             canvas.repaint();
+            actualizarBotones(); // Habilitar guardar/exportar
         });
 
-        // 3.6) Botón Guardar
+        // 3.6) Guardar dibujo
         btnGuardar.addActionListener(e -> {
+            if (lienzoModel.getFiguras().isEmpty()) {
+                JOptionPane.showMessageDialog(
+                    MainFrame.this,
+                    "No hay figuras para guardar."
+                );
+                return;
+            }
             String nombre = JOptionPane.showInputDialog(
                 MainFrame.this,
                 "Introduce un nombre para este dibujo:"
             );
-            if (nombre == null || nombre.trim().isEmpty()) {
-                return; // El usuario canceló o no escribió nada
+            if (nombre == null) {
+                return;
+            }
+            nombre = nombre.trim();
+            if (nombre.isEmpty()) {
+                JOptionPane.showMessageDialog(
+                    MainFrame.this,
+                    "El nombre no puede estar vacío."
+                );
+                return;
+            }
+            // Prohibir caracteres inválidos en el nombre
+            Pattern pat = Pattern.compile("[\\/:*?\"<>|]");
+            if (pat.matcher(nombre).find()) {
+                JOptionPane.showMessageDialog(
+                    MainFrame.this,
+                    "El nombre contiene caracteres inválidos."
+                );
+                return;
             }
             try {
                 DibujoDAO dibujoDAO = new DibujoDAO();
                 FiguraDAO figuraDAO = new FiguraDAO();
-                // 1) Intentar crear el dibujo (puede lanzar SQLException si nombre ya existe)
                 int idDibujo;
                 try {
-                    idDibujo = dibujoDAO.crearDibujo(nombre.trim());
+                    idDibujo = dibujoDAO.crearDibujo(nombre);
                 } catch (SQLException ex) {
-                    // Si el error es por clave única duplicada, ofrecer sobrescribir
                     if (ex.getMessage().contains("Duplicate") || ex.getErrorCode() == 1062) {
                         int resp = JOptionPane.showConfirmDialog(
                             MainFrame.this,
@@ -267,8 +293,7 @@ public class MainFrame extends JFrame {
                             JOptionPane.YES_NO_OPTION
                         );
                         if (resp == JOptionPane.YES_OPTION) {
-                            idDibujo = dibujoDAO.obtenerIdPorNombre(nombre.trim());
-                            // Eliminar las figuras existentes de ese dibujo
+                            idDibujo = dibujoDAO.obtenerIdPorNombre(nombre);
                             figuraDAO.eliminarFigurasDeDibujo(idDibujo);
                         } else {
                             return;
@@ -277,11 +302,12 @@ public class MainFrame extends JFrame {
                         throw ex;
                     }
                 }
-                // 2) Guardar cada figura en orden
                 List<Figura> figs = lienzoModel.getFiguras();
                 for (int i = 0; i < figs.size(); i++) {
                     figuraDAO.guardarFigura(idDibujo, figs.get(i), i);
                 }
+                nombreActual = nombre;
+                setTitle("Mi Paint - Dibujo: " + nombreActual); // Actualizar título
                 JOptionPane.showMessageDialog(
                     MainFrame.this,
                     "Dibujo '" + nombre + "' guardado correctamente."
@@ -295,12 +321,22 @@ public class MainFrame extends JFrame {
             }
         });
 
-        // 3.7) Botón Cargar
+        // 3.7) Cargar dibujo
         btnCargar.addActionListener(e -> {
+            if (!lienzoModel.getFiguras().isEmpty()) {
+                int resp2 = JOptionPane.showConfirmDialog(
+                    MainFrame.this,
+                    "Hay un dibujo sin guardar. ¿Deseas perder los cambios y cargar otro?",
+                    "Confirmar pérdida de datos",
+                    JOptionPane.YES_NO_OPTION
+                );
+                if (resp2 != JOptionPane.YES_OPTION) {
+                    return;
+                }
+            }
             try {
                 DibujoDAO dibujoDAO = new DibujoDAO();
                 FiguraDAO figuraDAO = new FiguraDAO();
-                // 1) Obtener lista de nombres de dibujos existentes
                 java.util.List<String> nombres = dibujoDAO.listarNombresDibujos();
                 if (nombres.isEmpty()) {
                     JOptionPane.showMessageDialog(
@@ -309,7 +345,6 @@ public class MainFrame extends JFrame {
                     );
                     return;
                 }
-                // 2) Mostrar diálogo para seleccionar uno
                 String seleccionado = (String) JOptionPane.showInputDialog(
                     MainFrame.this,
                     "Selecciona un dibujo:",
@@ -320,9 +355,8 @@ public class MainFrame extends JFrame {
                     nombres.get(0)
                 );
                 if (seleccionado == null) {
-                    return; // El usuario canceló
+                    return;
                 }
-                // 3) Obtener id a partir del nombre
                 int idDibujo = dibujoDAO.obtenerIdPorNombre(seleccionado);
                 if (idDibujo < 0) {
                     JOptionPane.showMessageDialog(
@@ -331,15 +365,16 @@ public class MainFrame extends JFrame {
                     );
                     return;
                 }
-                // 4) Cargar las figuras de ese dibujo
                 java.util.List<Figura> figs = figuraDAO.cargarFigurasPorDibujo(idDibujo);
-                // 5) Vaciar modelo actual y agregar las figuras leídas
                 lienzoModel.clear();
                 for (Figura f : figs) {
                     lienzoModel.agregarFigura(f);
                 }
+                nombreActual = seleccionado;
+                setTitle("Mi Paint - Dibujo: " + nombreActual); // Actualizar título
                 canvas.clearFiguraTemporal();
                 canvas.repaint();
+                actualizarBotones(); // Habilitar guardar/exportar tras cargar
             } catch (SQLException ex) {
                 JOptionPane.showMessageDialog(
                     MainFrame.this,
@@ -349,9 +384,15 @@ public class MainFrame extends JFrame {
             }
         });
 
-        // 3.8) Botón Exportar a SVG
+        // 3.8) Exportar a SVG
         btnExportarSVG.addActionListener(e -> {
-            // 1) Configurar JFileChooser
+            if (lienzoModel.getFiguras().isEmpty()) {
+                JOptionPane.showMessageDialog(
+                    MainFrame.this,
+                    "No hay figuras para exportar."
+                );
+                return;
+            }
             JFileChooser chooser = new JFileChooser();
             chooser.setDialogTitle("Guardar como SVG");
             FileNameExtensionFilter filtro = new FileNameExtensionFilter(
@@ -359,24 +400,16 @@ public class MainFrame extends JFrame {
             );
             chooser.setFileFilter(filtro);
 
-            // 2) Mostrar diálogo de guardado
             int seleccion = chooser.showSaveDialog(MainFrame.this);
             if (seleccion != JFileChooser.APPROVE_OPTION) {
-                return; // El usuario canceló
+                return;
             }
-
-            // 3) Obtener el archivo elegido
             File archivo = chooser.getSelectedFile();
             String ruta = archivo.getAbsolutePath();
-            // 4) Asegurarse de que termine en ".svg"
             if (!ruta.toLowerCase().endsWith(".svg")) {
                 archivo = new File(ruta + ".svg");
             }
-
-            // 5) Generar contenido SVG
             String svgContent = generarSVG();
-
-            // 6) Escribir a disco
             try (FileWriter writer = new FileWriter(archivo)) {
                 writer.write(svgContent);
                 JOptionPane.showMessageDialog(
@@ -407,11 +440,12 @@ public class MainFrame extends JFrame {
                 lienzoModel.agregarFigura(pf);
                 canvas.clearFiguraTemporal();
                 canvas.repaint();
+                actualizarBotones(); // Habilitar guardar/exportar al agregar
                 break;
 
             case "Línea":
                 if (!enModoDibujar) {
-                    x0 = x; 
+                    x0 = x;
                     y0 = y;
                     enModoDibujar = true;
                     figuraTemporal = new LineaFigura(x0, y0, x0, y0, cTrazo);
@@ -422,12 +456,13 @@ public class MainFrame extends JFrame {
                     enModoDibujar = false;
                     canvas.clearFiguraTemporal();
                     canvas.repaint();
+                    actualizarBotones(); // Habilitar guardar/exportar al agregar
                 }
                 break;
 
             case "Circunferencia":
                 if (!enModoDibujar) {
-                    x0 = x; 
+                    x0 = x;
                     y0 = y;
                     enModoDibujar = true;
                     figuraTemporal = new CirculoFigura(x0, y0, 0, cTrazo, cRelleno, rell);
@@ -441,6 +476,7 @@ public class MainFrame extends JFrame {
                     enModoDibujar = false;
                     canvas.clearFiguraTemporal();
                     canvas.repaint();
+                    actualizarBotones();
                 }
                 break;
 
@@ -465,6 +501,7 @@ public class MainFrame extends JFrame {
                     enModoDibujar = false;
                     canvas.clearFiguraTemporal();
                     canvas.repaint();
+                    actualizarBotones();
                 }
                 break;
 
@@ -548,9 +585,9 @@ public class MainFrame extends JFrame {
     private boolean segmentosSeIntersectan(
             int x1, int y1, int x2, int y2,
             int x3, int y3, int x4, int y4) {
-        java.util.function.BiFunction<Point, Point, Point> sub = 
+        java.util.function.BiFunction<Point, Point, Point> sub =
             (p, q) -> new Point(p.x - q.x, p.y - q.y);
-        java.util.function.BiFunction<Point, Point, Long> cross = 
+        java.util.function.BiFunction<Point, Point, Long> cross =
             (p, q) -> (long) p.x * q.y - (long) p.y * q.x;
 
         Point A = new Point(x1, y1);
@@ -582,34 +619,37 @@ public class MainFrame extends JFrame {
      * @return String con el XML completo del SVG.
      */
     private String generarSVG() {
-        // 1) Definir ancho y alto del SVG según tamaño del CanvasPanel
         int width = canvas.getWidth();
         int height = canvas.getHeight();
 
-        // 2) Cabecera del SVG con namespace y tamaño
         StringBuilder sb = new StringBuilder();
         sb.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
         sb.append(String.format(
-            "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"%d\" height=\"%d\">\n", 
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"%d\" height=\"%d\">\n",
             width, height
         ));
 
-        // 3) Iterar sobre cada figura en el modelo y usar su toSVG()
         for (Figura f : lienzoModel.getFiguras()) {
-            sb.append("  "); // indentación de 2 espacios
+            sb.append("  ");
             sb.append(f.toSVG());
             sb.append("\n");
         }
 
-        // 4) Cerrar etiqueta <svg>
         sb.append("</svg>\n");
 
         return sb.toString();
     }
 
     /**
-     * Método main para arrancar la aplicación.
+     * Actualiza el estado (habilitado/deshabilitado) de los botones Guardar y Exportar
+     * según haya o no figuras en el lienzo.
      */
+    private void actualizarBotones() {                            // Nuevo método
+        boolean hayFiguras = !lienzoModel.getFiguras().isEmpty();  // 409-a
+        btnGuardar.setEnabled(hayFiguras);                        // 409-b
+        btnExportarSVG.setEnabled(hayFiguras);                    // 409-c
+    }
+
     public static void main(String[] args) {
         javax.swing.SwingUtilities.invokeLater(() -> {
             MainFrame mf = new MainFrame();
