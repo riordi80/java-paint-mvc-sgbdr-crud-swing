@@ -6,25 +6,14 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 /**
- * Singleton para gestionar la conexión con MySQL y crear tablas si no existen.
+ * Gestionar la conexión con MySQL y crear tablas si no existen.
  */
 public class ConexionBD {
-    // URL fija
+    private static final String DB_NAME = "paint_db";
     private static final String URL =
-        "jdbc:mysql://localhost:3306/paint_db?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8";
-
-    // Ahora leemos usuario/contraseña de System.getProperty()
-    private static final String USER = System.getProperty("DB_USER");
-    private static final String PASS = System.getProperty("DB_PASS");
-
-    static {
-        if (USER == null || PASS == null) {
-            throw new IllegalStateException(
-                "Faltan las system properties DB_USER y/o DB_PASS. "
-                + "Arranca la app con: -DDB_USER=tu_usuario -DDB_PASS=tu_contraseña"
-            );
-        }
-    }
+    "jdbc:mysql://localhost:3306/" + DB_NAME + "?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8";
+    private static final String USER = "desarrollo";
+    private static final String PASS = "desarrollo";
 
     private static ConexionBD instancia = null;
 

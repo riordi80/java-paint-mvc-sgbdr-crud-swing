@@ -11,8 +11,8 @@ import model.Figura;
 import model.LienzoModel;
 
 /**
- * CanvasPanel es nuestro “lienzo” (vista). Ya no almacena puntos sueltos:
- * recibe un LienzoModel y, en paintComponent, invoca a cada figura allí guardada.
+ * CanvasPanel es nuestro “lienzo” (vista).
+ * Recibe un LienzoModel y, en paintComponent, invoca a cada figura allí guardada.
  * 
  * Además, tendrá espacio para mostrar una figura “temporal” mientras el usuario
  * arrastra el ratón (por ejemplo, la línea o el círculo en proceso).
