@@ -5,8 +5,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * LienzoModel actúa como “modelo” en memoria: es simplemente una lista de Figuras.
- * Desde la Parte 3 añadiremos persistencia en BD, pero por ahora trabajamos solo en memoria.
+ * LienzoModel actúa como “modelo” en la BD: es simplemente una lista de Figuras.
  */
 public class LienzoModel {
     // Lista interna con las figuras dibujadas en el orden en que se agregan

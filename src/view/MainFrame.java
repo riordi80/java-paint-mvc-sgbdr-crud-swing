@@ -1,27 +1,18 @@
 package view;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.awt.Point;
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
-import javax.swing.JColorChooser;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSlider;
 import javax.swing.SwingConstants;
-import javax.swing.JFileChooser;
-import javax.swing.filechooser.FileNameExtensionFilter;
 
-import model.Figura;
 import model.LienzoModel;
 
 /**
@@ -102,7 +93,7 @@ public class MainFrame extends JFrame {
 
         // 5. Botón para “Finalizar pol. irr.”
         gbc.gridy++;
-        btnFinalizarPoligono = new JButton("Finalizar pol. irr.");
+        btnFinalizarPoligono = new JButton("Finalizar Pol. irregular");
         btnFinalizarPoligono.setEnabled(false);
         panelControles.add(btnFinalizarPoligono, gbc);
 

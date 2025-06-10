@@ -19,8 +19,6 @@ public class DibujoDAO {
      * Devuelve el id generado. Si el nombre ya existe, lanza SQLException.
      */
     public int crearDibujo(String nombre) throws SQLException {
-        // OPCIÓN A: si 'fecha_creacion' tiene DEFAULT CURRENT_TIMESTAMP en la tabla, 
-        // basta con insertar solo el nombre:
         String sql = "INSERT INTO dibujos(nombre) VALUES (?)";
         try (Connection conn = conexionBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {

@@ -8,7 +8,7 @@ import java.util.List;
 
 /**
  * Polígono irregular definido por una lista de puntos (vértices) en orden.
- * El constructor recibe la lista ya validada (sin auto‐intersecciones).
+ * El constructor recibe la lista ya validada.
  */
 public class PoligonoIrregularFigura implements Figura {
     private List<Point> vertices;   // lista de puntos (x,y) ordenados

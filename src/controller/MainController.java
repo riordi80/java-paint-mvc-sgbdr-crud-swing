@@ -2,7 +2,6 @@ package controller;
 
 import java.awt.Color;
 import java.awt.Point;
-import java.awt.event.ActionEvent;
 import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.FileWriter;
@@ -10,6 +9,7 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.regex.Pattern;
+import java.util.ArrayList;
 
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -18,8 +18,6 @@ import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.JSlider;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
 import javax.swing.event.MouseInputAdapter;
 
 import model.CirculoFigura;
@@ -101,14 +99,7 @@ public class MainController {
             }
         });
 
-        // 4) Slider de vértices (ya no imprime nada)
-        JSlider slider = view.getSliderVertices();
-        slider.addChangeListener(new ChangeListener() {
-            @Override
-            public void stateChanged(ChangeEvent e) { /* nada */ }
-        });
-
-        // 5) Botón “Finalizar Pol. Irr.”
+        // 4) Botón “Finalizar Pol. Irr.”
         JButton btnFinalizar = view.getBtnFinalizarPoligono();
         btnFinalizar.addActionListener(e -> {
             if (verticesTemp.size() < 3) {
@@ -118,15 +109,29 @@ public class MainController {
                 );
                 return;
             }
+
+            // Si hay intersección, pedir confirmación sobre guardado
             if (hayInterseccionEntreVertices(verticesTemp)) {
-                JOptionPane.showMessageDialog(
+                int resp = JOptionPane.showConfirmDialog(
                     view,
-                    "Los lados se cruzan. Corrige los puntos o vuelve a empezar."
+                    "Los lados se cruzan: esto deja de ser un polígono irregular.\n" +
+                    "¿Deseas guardarlo de todas formas?",
+                    "Intersección detectada",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE
                 );
-                return;
+                if (resp != JOptionPane.YES_OPTION) {
+                    // El usuario ha dicho NO → cancelar y reiniciar el polígono
+                    verticesTemp.clear();
+                    enModoDibujar = false;
+                    view.getCanvas().clearFiguraTemporal();
+                    return;
+                }
             }
+
+            // Si llega aquí, o no había intersección, creamos el polígono
             PoligonoIrregularFigura pIrr = new PoligonoIrregularFigura(
-                new java.util.ArrayList<>(verticesTemp),
+                new ArrayList<>(verticesTemp),
                 colorTrazo, colorRelleno, true
             );
             model.agregarFigura(pIrr);
@@ -137,7 +142,7 @@ public class MainController {
             actualizarBotones();
         });
 
-        // 6) Botón “Guardar dibujo”
+        // 5) Botón “Guardar dibujo”
         JButton btnGuardar = view.getBtnGuardar();
         btnGuardar.addActionListener(e -> {
             if (model.getFiguras().isEmpty()) {
@@ -178,13 +183,13 @@ public class MainController {
                     idDibujo = dibujoDAO.crearDibujo(nombre);
                 } catch (SQLException ex) {
                     if (ex.getMessage().contains("Duplicate") || ex.getErrorCode() == 1062) {
-                        int resp = JOptionPane.showConfirmDialog(
+                        int resp2 = JOptionPane.showConfirmDialog(
                             view,
                             "El nombre ya existe. ¿Deseas sobrescribir el dibujo existente?",
                             "Confirmar sobrescritura",
                             JOptionPane.YES_NO_OPTION
                         );
-                        if (resp == JOptionPane.YES_OPTION) {
+                        if (resp2 == JOptionPane.YES_OPTION) {
                             idDibujo = dibujoDAO.obtenerIdPorNombre(nombre);
                             figuraDAO.eliminarFigurasDeDibujo(idDibujo);
                         } else {
@@ -212,7 +217,7 @@ public class MainController {
             }
         });
 
-        // 7) Botón “Cargar dibujo”
+        // 6) Botón “Cargar dibujo”
         JButton btnCargar = view.getBtnCargar();
         btnCargar.addActionListener(e -> {
             if (!model.getFiguras().isEmpty()) {
@@ -271,7 +276,7 @@ public class MainController {
             }
         });
 
-        // 8) Botón “Exportar a SVG”
+        // 7) Botón “Exportar a SVG”
         JButton btnExportar = view.getBtnExportarSVG();
         btnExportar.addActionListener(e -> {
             if (model.getFiguras().isEmpty()) {
@@ -312,7 +317,7 @@ public class MainController {
             }
         });
 
-        // 9) MouseListener & MouseMotionListener para el canvas
+        // 8) MouseListener & MouseMotionListener para el canvas
         CanvasPanel canvas = view.getCanvas();
         canvas.addMouseListener(new MouseInputAdapter() {
             @Override

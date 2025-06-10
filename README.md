@@ -4,79 +4,62 @@
 
 This is a lightweight “Paint”-style application developed in Java using Swing for the GUI. You can draw various geometric shapes on a canvas, save/load your drawings to/from a MySQL database, and export them as SVG files. The architecture follows a pure MVC pattern with separate packages for Model, View, Controller, and DAO (data access).
 
----
+------
 
 ## Key Features
 
 1. **Shape Drawing**
-
-   * **Point**: Draw a small filled circle at a clicked coordinate.
-   * **Line**: Click once to set the first endpoint, move the mouse to preview, click again to set the second endpoint.
-   * **Circle**: Click to set center, move the mouse to preview radius, click again to finalize.
-   * **Regular Polygon**: Select number of sides (3–12) via slider. Click to set center, move the mouse to preview size and orientation, click again to finalize.
-   * **Irregular Polygon**: Click repeatedly to add vertices; click “Finish Polygon” to validate (minimum 3 points, no self-intersections) and finalize.
-
+   - **Point**: Draw a small filled circle at a clicked coordinate.
+   - **Line**: Click once to set the first endpoint, move the mouse to preview, click again to set the second endpoint.
+   - **Circle**: Click to set center, move the mouse to preview radius, click again to finalize.
+   - **Regular Polygon**: Select number of sides (3–12) via slider. Click to set center, move the mouse to preview size and orientation, click again to finalize.
+   - **Irregular Polygon**: Click repeatedly to add vertices; click “Finish Polygon” to validate (minimum 3 points, no self-intersections) and finalize.
 2. **Color Selection**
-
-   * **Stroke Color**: Choose any color for the outline of shapes via a color picker dialog.
-   * **Fill Color**: Choose any color for filling shapes that support filling (circle, polygons). If “fill” is disabled for a given shape, only the outline is drawn.
-
+   - **Stroke Color**: Choose any color for the outline of shapes via a color picker dialog.
+   - **Fill Color**: Choose any color for filling shapes that support filling (circle, polygons). If “fill” is disabled for a given shape, only the outline is drawn.
 3. **Saving & Loading Drawings (MySQL)**
-
-   * **Save**:
-
+   - **Save**:
      1. Click “Save Drawing.”
-     2. Enter a unique name (no invalid filename characters).
+     2. Enter a unique name (no invalid characters: `\\/:*?"<>|`).
      3. If the name already exists, choose whether to overwrite or cancel.
      4. All shapes currently on the canvas are persisted in two tables:
-
-        * **dibujos**: stores drawing ID, name, and timestamp.
-        * **figuras** and **vertices\_poligonos\_irregulares**: each shape’s data (type, coordinates, color values, etc.).
-   * **Load**:
-
+        - `dibujos`: stores drawing ID, name, and timestamp.
+        - `figuras` + `vertices_poligonos_irregulares`: each shape’s data (type, coordinates, color values, etc.).
+   - **Load**:
      1. Click “Load Drawing.”
-     2. If any shapes on the canvas are unsaved, you’ll be prompted to confirm discarding them.
-     3. A dialog lists all saved drawing names (ordered by most recent).
-     4. Selecting one loads every shape back onto the canvas exactly as they were drawn previously.
-
+     2. If there are unsaved shapes, confirm discarding them.
+     3. A dialog lists all saved drawing names (most recent first).
+     4. Selecting one loads each shape back onto the canvas exactly as they were drawn.
 4. **Export to SVG**
-
-   * Click “Export to SVG” to open a file‐save dialog.
-   * If no shapes exist, you’ll see a warning. Otherwise, choose a filename (extension “.svg” is appended automatically if missing).
-   * The application generates a valid SVG XML file containing each shape’s SVG element (`<circle>`, `<line>`, `<polygon>`, etc.) with correct coordinates, stroke color, fill color (or none), and size.
-
+   - Click “Export to SVG” to open a file‐save dialog.
+   - If no shapes exist, a warning appears and export is aborted.
+   - Choose a filename (`.svg` extension is appended automatically if missing).
+   - The application generates a valid SVG file containing each shape’s element (`<circle>`, `<line>`, `<polygon>`, etc.) with correct attributes.
 5. **Validation & User Feedback**
-
-   * Minimum 3 vertices required for irregular polygons; attempts to finish with fewer produce an alert.
-   * Polygons cannot self‐intersect: attempted invalid vertex placements show an alert to correct or restart.
-   * Cannot save or export if canvas is empty (buttons are disabled and/or show a message).
-   * Prevents empty or invalid drawing names (disallows characters: `\ / : * ? " < > |`).
-
+   - At least 3 vertices are required for irregular polygons; fewer points trigger an alert.
+   - Irregular polygons cannot self‐intersect: invalid placements show an error message.
+   - Save/Export buttons are disabled when the canvas is empty (or show a message).
+   - Drawing names cannot be empty or contain the characters: `\\/:*?"<>|`.
 6. **MVC Architecture**
+   - **Model** (`model` package):
+     - `Figura` interface (defines `dibujar(Graphics2D)` and `toSVG()`).
+     - Shape classes: `PuntoFigura`, `LineaFigura`, `CirculoFigura`, `PoligonoRegularFigura`, `PoligonoIrregularFigura`.
+     - `LienzoModel`: holds a list of `Figura` instances and provides methods to add, clear, or retrieve shapes.
+   - **View** (`view` package):
+     - `MainFrame`: builds the GUI (control panel on the left, drawing canvas in the center) and exposes getters for components.
+     - `CanvasPanel`: extends `JPanel` and overrides `paintComponent(Graphics)` to render all shapes and any temporary preview.
+   - **Controller** (`controller` package):
+     - `MainController`: registers all event listeners (buttons, slider, mouse events) and mediates between View, Model, and DAO. Handles shape creation, color picking, save/load/export logic, and button state updates.
+   - **DAO** (`dao` package):
+     - `ConexionBD`: singleton that manages the JDBC connection and ensures tables (`dibujos`, `figuras`, `vertices_poligonos_irregulares`) exist.
+     - `DibujoDAO`: methods to create a new drawing, list names, retrieve IDs by name, and delete drawings.
+     - `FiguraDAO`: persists each shape to `figuras` (and vertices table for irregular polygons) and loads shapes back into `Figura` instances.
 
-   * **Model** (`model` package):
-
-     * `Figura` interface (defines `dibujar(Graphics2D)` and `toSVG()`).
-     * Concrete shape classes: `PuntoFigura`, `LineaFigura`, `CirculoFigura`, `PoligonoRegularFigura`, `PoligonoIrregularFigura`.
-     * `LienzoModel`: holds a list of `Figura` instances in memory and provides methods to add, clear, or retrieve shapes.
-   * **View** (`view` package):
-
-     * `MainFrame`: constructs the GUI layout (control panel on the left, drawing canvas in the center) and exposes getters for buttons, sliders, combo boxes, and the canvas.
-     * `CanvasPanel`: extends `JPanel` and overrides `paintComponent(Graphics)` to render all shapes from `LienzoModel` and any temporary shape being dragged.
-   * **Controller** (`controller` package):
-
-     * `MainController`: registers all event listeners (button clicks, slider changes, mouse events) and mediates between View and Model. It handles shape creation logic, color picking, save/load/export workflow, and enables/disables buttons appropriately.
-   * **DAO** (`dao` package):
-
-     * `ConexionBD`: singleton that manages the JDBC connection, creates necessary tables (`dibujos`, `figuras`, `vertices_poligonos_irregulares`) if they don’t exist.
-     * `DibujoDAO`: methods to create a new drawing record, list drawing names, retrieve IDs by name, and delete drawings.
-     * `FiguraDAO`: methods to insert each shape into the database (including an additional table for irregular‐polygon vertices) and to load shapes back into `Figura` instances when retrieving a saved drawing.
-
----
+------
 
 ## Project Structure
 
-```
+```plaintext
 src/
 ├── controller/
 │   └── MainController.java
@@ -97,83 +80,87 @@ src/
     └── MainFrame.java
 ```
 
----
+------
 
 ## Getting Started
 
-1. **Prerequisites**
+### Prerequisites
 
-   * Java Development Kit (JDK) 11 or higher.
-   * MySQL server running locally (or update the JDBC URL to point to your MySQL instance).
-   * Ensure `mysql-connector-java.jar` is available on your classpath.
-   * **Database credentials must be passed as system properties** (VM options) and read via `System.getProperty(...)` in `ConexionBD.java`. For example:
+- Java Development Kit (JDK) 11 or higher.
+- MySQL server running locally (or update the URL below to point to your instance).
+- MySQL Connector/J (`mysql-connector-java.jar`) on your classpath.
 
-     ```
-     -DDB_USER=your_user  
-     -DDB_PASS=your_password  
-     ```
+### Configuring Database Connection
 
-2. **Database Setup**
+Currently, the JDBC URL, username, and password are defined as constants in `ConexionBD.java`:
 
-   * The application reads the following system properties for database connection:
+```java
+private static final String DB_NAME = "paint_db";
+private static final String URL =
+    "jdbc:mysql://localhost:3306/" + DB_NAME +
+    "?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8";
+private static final String USER = "desarrollo";
+private static final String PASS = "desarrollo";
+```
 
-     * `db.url`
-     * `db.user`
-     * `db.password`
-   * On first run, `ConexionBD` automatically creates these tables if they don’t exist:
+Edit these constants to match your environment, or modify the class to read from environment variables or system properties as needed.
 
-     ```sql
-     CREATE TABLE IF NOT EXISTS dibujos (
-       id_dibujo      INT AUTO_INCREMENT PRIMARY KEY,
-       nombre         VARCHAR(255) NOT NULL UNIQUE,
-       fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-     );
-     CREATE TABLE IF NOT EXISTS figuras (
-       id_figura      INT AUTO_INCREMENT PRIMARY KEY,
-       id_dibujo      INT NOT NULL,
-       orden          INT NOT NULL,
-       tipo           VARCHAR(20) NOT NULL,
-       color_trazo    INT NOT NULL,
-       color_relleno  INT NOT NULL,
-       relleno        TINYINT(1) NOT NULL,
-       x              INT, y INT,
-       x1             INT, y1 INT,
-       x2             INT, y2 INT,
-       centroX        INT, centroY INT,
-       radio          INT,
-       n_lados        INT,
-       angulo_inicio  DOUBLE,
-       FOREIGN KEY (id_dibujo) REFERENCES dibujos(id_dibujo) ON DELETE CASCADE
-     );
-     CREATE TABLE IF NOT EXISTS vertices_poligonos_irregulares (
-       id_vertice    INT AUTO_INCREMENT PRIMARY KEY,
-       id_figura     INT NOT NULL,
-       x             INT NOT NULL,
-       y             INT NOT NULL,
-       orden_vert    INT NOT NULL,
-       FOREIGN KEY (id_figura) REFERENCES figuras(id_figura) ON DELETE CASCADE
-     );
-     ```
+### First Run: Table Creation
 
-3. **Build & Run**
+On startup, `ConexionBD` ensures the following tables exist (creating them if necessary):
 
-   * **Using an IDE (NetBeans/Eclipse/IntelliJ)**:
+```sql
+CREATE TABLE IF NOT EXISTS dibujos (
+  id_dibujo      INT AUTO_INCREMENT PRIMARY KEY,
+  nombre         VARCHAR(255) NOT NULL UNIQUE,
+  fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
 
-     1. Import the project as a Java application.
-     2. Add the MySQL JDBC driver (`mysql-connector-java.jar`) to the classpath.
-     3. Set VM options with the appropriate `-Ddb.url`, `-Ddb.user`, and `-Ddb.password`.
-     4. Run the `MainFrame.main()` method; the `MainController` is instantiated automatically.
-   * **Using Command Line**:
+CREATE TABLE IF NOT EXISTS figuras (
+  id_figura      INT AUTO_INCREMENT PRIMARY KEY,
+  id_dibujo      INT NOT NULL,
+  orden          INT NOT NULL,
+  tipo           VARCHAR(20) NOT NULL,
+  color_trazo    INT NOT NULL,
+  color_relleno  INT NOT NULL,
+  relleno        TINYINT(1) NOT NULL,
+  x              INT, y INT,
+  x1             INT, y1 INT,
+  x2             INT, y2 INT,
+  centroX        INT, centroY INT,
+  radio          INT,
+  n_lados        INT,
+  angulo_inicio  DOUBLE,
+  FOREIGN KEY (id_dibujo) REFERENCES dibujos(id_dibujo) ON DELETE CASCADE
+) ENGINE=InnoDB;
 
-     ```
-     javac -cp path/to/mysql-connector-java.jar src/**/*.java
-     java -Ddb.url=jdbc:mysql://localhost:3306/paint_db?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8 \
-          -Ddb.user=root \
-          -Ddb.password=your_password \
-          -cp .;path/to/mysql-connector-java.jar view.MainFrame
-     ```
+CREATE TABLE IF NOT EXISTS vertices_poligonos_irregulares (
+  id_vertice    INT AUTO_INCREMENT PRIMARY KEY,
+  id_figura     INT NOT NULL,
+  x             INT NOT NULL,
+  y             INT NOT NULL,
+  orden_vert    INT NOT NULL,
+  FOREIGN KEY (id_figura) REFERENCES figuras(id_figura) ON DELETE CASCADE
+) ENGINE=InnoDB;
+```
 
----
+### Build & Run
+
+#### Using an IDE
+
+1. Import the project as a Java application.
+2. Add the MySQL JDBC driver (`mysql-connector-java.jar`) to the classpath.
+3. Adjust the database constants in `ConexionBD.java` (or configure environment variables).
+4. Run `MainFrame.main()`. The `MainController` is instantiated automatically.
+
+#### Using Command Line
+
+```bash
+javac -cp path/to/mysql-connector-java.jar src/**/*.java
+java -cp .:path/to/mysql-connector-java.jar view.MainFrame
+```
+
+------
 
 ## Usage Guide
 

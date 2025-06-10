@@ -90,7 +90,7 @@ public class PoligonoRegularFigura implements Figura {
         );
     }
 
-    // Getters (para persistencia, más adelante)
+    // Getters (para persistencia)
     public int getCentroX() { return centroX; }
     public int getCentroY() { return centroY; }
     public int getRadio() { return radio; }

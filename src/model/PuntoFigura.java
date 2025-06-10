@@ -45,7 +45,7 @@ public class PuntoFigura implements Figura {
         );
     }
 
-    // Getters y setters si hacen falta (para persistencia en BD, más adelante)
+    // Getters y setters (para persistencia)
     public int getX() { return x; }
     public int getY() { return y; }
     public Color getColorTrazo() { return colorTrazo; }
