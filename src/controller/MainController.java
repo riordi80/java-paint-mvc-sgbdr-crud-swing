@@ -110,26 +110,26 @@ public class MainController {
                 return;
             }
 
-            // Si hay intersección, pedir confirmación sobre guardado
+            // Nueva lógica: si hay intersección, eliminar figura
             if (hayInterseccionEntreVertices(verticesTemp)) {
-                int resp = JOptionPane.showConfirmDialog(
+                JOptionPane.showOptionDialog(
                     view,
-                    "Los lados se cruzan: esto deja de ser un polígono irregular.\n" +
-                    "¿Deseas guardarlo de todas formas?",
+                    "Operación no permitida: Los lados se cruzan",
                     "Intersección detectada",
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.WARNING_MESSAGE
+                    JOptionPane.DEFAULT_OPTION,
+                    JOptionPane.WARNING_MESSAGE,
+                    null,
+                    new Object[]{"Aceptar"},
+                    "Aceptar"
                 );
-                if (resp != JOptionPane.YES_OPTION) {
-                    // El usuario ha dicho NO → cancelar y reiniciar el polígono
-                    verticesTemp.clear();
-                    enModoDibujar = false;
-                    view.getCanvas().clearFiguraTemporal();
-                    return;
-                }
+                // Limpiar estado y descartar vértices
+                verticesTemp.clear();
+                enModoDibujar = false;
+                view.getCanvas().clearFiguraTemporal();
+                return;
             }
 
-            // Si llega aquí, o no había intersección, creamos el polígono
+            // Crear y agregar el polígono regular (o complejo)
             PoligonoIrregularFigura pIrr = new PoligonoIrregularFigura(
                 new ArrayList<>(verticesTemp),
                 colorTrazo, colorRelleno, true
